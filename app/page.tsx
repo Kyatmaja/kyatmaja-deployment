@@ -1,69 +1,77 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+import { prisma } from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
+import Link from "next/link";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+async function tambahTruk(formData: FormData) {
+  "use server";
+  await prisma.truk.create({
+    data: {
+      platNomor: String(formData.get("platNomor")),
+      jenis: String(formData.get("jenis")),
+      kapasitas: Number(formData.get("kapasitas")),
+      status: String(formData.get("status")),
+    },
+  });
+  revalidatePath("/");
+}
+
+async function hapusTruk(formData: FormData) {
+  "use server";
+  await prisma.truk.delete({ where: { id: Number(formData.get("id")) } });
+  revalidatePath("/");
+}
+
+export default async function Home() {
+  const daftarTruk = await prisma.truk.findMany({ orderBy: { id: "asc" } });
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>
-            To get started, edit the{" "}
-            <code className={styles.code}>page.tsx</code> file.
-          </h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <main style={{ padding: 24, fontFamily: "sans-serif" }}>
+      <h1>Data Armada Truk</h1>
+
+      <h2>Tambah Truk</h2>
+      <form action={tambahTruk} style={{ display: "grid", gap: 8, maxWidth: 300 }}>
+        <input name="platNomor" placeholder="Plat nomor (B 1234 XYZ)" required />
+        <input name="jenis" placeholder="Jenis (Engkel, Tronton, dll)" required />
+        <input name="kapasitas" type="number" placeholder="Kapasitas (ton)" required />
+        <select name="status">
+          <option>Tersedia</option>
+          <option>Sedang Jalan</option>
+          <option>Perbaikan</option>
+        </select>
+        <button type="submit">Simpan</button>
+      </form>
+
+      <h2>Daftar Truk</h2>
+      <table border={1} cellPadding={8}>
+        <thead>
+          <tr>
+            <th>Plat Nomor</th>
+            <th>Jenis</th>
+            <th>Kapasitas (ton)</th>
+            <th>Status</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {daftarTruk.map((t) => (
+            <tr key={t.id}>
+              <td>{t.platNomor}</td>
+              <td>{t.jenis}</td>
+              <td>{t.kapasitas}</td>
+              <td>{t.status}</td>
+              <td>
+                <Link href={`/edit/${t.id}`}>Edit</Link>{" "}
+                <form action={hapusTruk} style={{ display: "inline" }}>
+                  <input type="hidden" name="id" value={t.id} />
+                  <button type="submit">Hapus</button>
+                </form>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </main>
   );
 }
